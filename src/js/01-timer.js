@@ -1,5 +1,7 @@
 import flatpickr from 'flatpickr';
+import iziToast from 'izitoast';
 import 'flatpickr/dist/flatpickr.min.css';
+import 'izitoast/dist/css/iziToast.min.css';
 
 const refs = {
   btn: document.querySelector('[data-start]'),
@@ -11,32 +13,46 @@ const refs = {
 };
 
 let userSelectedDate;
-let delay;
+let interval;
+
+refs.btn.disabled = true;
+
+refs.btn.addEventListener('click', () => {
+  if (userSelectedDate) {
+    refs.btn.disabled = true;
+    refs.input.disabled = true;
+    startTimer();
+  }
+});
 
 function startTimer() {
-  delay = setInterval(timerSet(), 1000);
+  interval = setInterval(timerSet, 1000);
 }
 
 function timerSet() {
   const date = new Date();
   const timeLeft = userSelectedDate - date;
 
+  if (timeLeft <= 0) {
+    stopTimer();
+    return;
+  }
+
   const { days, hours, minutes, seconds } = convertMs(timeLeft);
   refs.days.textContent = days;
   refs.hours.textContent = hours;
   refs.minutes.textContent = minutes;
   refs.seconds.textContent = seconds;
+}
 
-  refs.days = refs.btn.addEventListener('click', () => {
-    if (userSelectedDate) {
-      refs.btn.setAttribute('disabled', true);
-      refs.input.setAttribute('disabled', true);
-      startTimer();
-    }
-  });
+function stopTimer() {
+  clearInterval(interval);
+  refs.input.disabled = false;
 }
 
 const options = {
+  closeOnEscape: true,
+  timeout: 1000,
   enableTime: true,
   time_24hr: true,
   defaultDate: new Date(),
@@ -44,15 +60,16 @@ const options = {
   onClose(selectedDates) {
     userSelectedDate = selectedDates[0];
     if (userSelectedDate < new Date()) {
-      window.alert('Please choose a date in the future');
-      refs.btn.setAttribute('disabled', true);
+      iziToast.error({
+        position: 'topRight',
+        message: 'Please choose a date in the future',
+      });
+      refs.btn.disabled = true;
     } else {
-      refs.btn.setAttribute('disabled', false);
+      refs.btn.disabled = false;
     }
   },
 };
-
-console.log(userSelectedDate);
 
 const fp = flatpickr('#datetime-picker', options);
 
@@ -62,10 +79,18 @@ function convertMs(ms) {
   const hour = minute * 60;
   const day = hour * 24;
 
-  const days = Math.floor(ms / day);
-  const hours = Math.floor((ms % day) / hour);
-  const minutes = Math.floor(((ms % day) % hour) / minute);
-  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
+  const days = Math.floor(ms / day)
+    .toString()
+    .padStart(2, '0');
+  const hours = Math.floor((ms % day) / hour)
+    .toString()
+    .padStart(2, '0');
+  const minutes = Math.floor(((ms % day) % hour) / minute)
+    .toString()
+    .padStart(2, '0');
+  const seconds = Math.floor((((ms % day) % hour) % minute) / second)
+    .toString()
+    .padStart(2, '0');
 
   return { days, hours, minutes, seconds };
 }
